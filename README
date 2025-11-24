@@ -1,0 +1,117 @@
+#DATASET
+# ------------------------------------------
+#   HEALTH TIME-SERIES DATASET GENERATOR
+#   23 Villages × 100 Patients × 366 Days × 10 readings/day
+# ------------------------------------------
+
+!pip install pandas openpyxl tqdm
+
+import pandas as pd
+import numpy as np
+import random
+import os
+from datetime import datetime, timedelta
+from tqdm import tqdm
+
+# ------------------------------------------
+# 1️⃣ MOUNT GOOGLE DRIVE
+# ------------------------------------------
+from google.colab import drive
+drive.mount('/content/drive')
+
+BASE_PATH = "/content/drive/MyDrive/Patient_Health_Dataset"
+os.makedirs(BASE_PATH, exist_ok=True)
+
+
+# ------------------------------------------
+# 2️⃣ DATA SETTINGS
+# ------------------------------------------
+villages = [
+    "Agarala","Arepalle","Bheemavaram","Chandragiri","Chinna Rama Puram",
+    "Chintagunta","Dornakambala","Ithepalle","Kalroadpalle",
+    "Kondreddy Khandriga","Kotala","Mamandur","Mittapalem",
+    "Mungilipattukothapalle","Nagapatla","Narasinga Puram","Panapakam",
+    "Pullaiahgari Palle","Ramireddi Palle","Reddivaripalle",
+    "Sanambatla","Sesha Puram","Thondawada"
+]
+
+num_patients = 100
+num_days = 366
+readings_per_day = 10
+
+
+# ------------------------------------------
+# 3️⃣ NAME + GENDER GENERATOR
+# ------------------------------------------
+male_names = ["Suresh","Ramesh","Mahesh","Venkat","Prasad","Naveen","Kiran",
+              "Sathish","Chandru","Harsha","Sandeep","Lokesh","Praveen","Arjun"]
+
+female_names = ["Harika","Deepika","Anusha","Sravani","Lakshmi","Sushma","Bhavani",
+                "Meghana","Soumya","Harini","Navya","Pavani","Sahithi","Divya"]
+
+surnames = ["Reddy","Naidu","Sharma","Gupta","Patel","Yadav","Verma","Chowdary","Rao","Iyer","Shetty"]
+
+def generate_profile():
+    gender = random.choice(["Male", "Female"])
+    if gender == "Male":
+        name = random.choice(male_names) + " " + random.choice(surnames)
+    else:
+        name = random.choice(female_names) + " " + random.choice(surnames)
+
+    age_group = random.choices(
+        population=["child","adult","elder"],
+        weights=[0.30, 0.50, 0.20],
+        k=1
+    )[0]
+
+    if age_group == "child":
+        age = random.randint(5, 17)
+    elif age_group == "adult":
+        age = random.randint(18, 60)
+    else:
+        age = random.randint(61, 90)
+
+    return name, gender, age
+
+
+# ------------------------------------------
+# 4️⃣ DATA GENERATION LOOP WITH PROGRESS BAR
+# ------------------------------------------
+start_date = datetime(2024, 1, 1)
+
+for village in villages:
+    folder = os.path.join(BASE_PATH, village)
+    os.makedirs(folder, exist_ok=True)
+
+    print("\n⏳ Processing village:", village)
+    for p in tqdm(range(1, num_patients + 1)):
+
+        patient_id = f"P{p:03d}"
+        name, gender, age = generate_profile()
+
+        records = []
+        for d in range(num_days):
+            date = start_date + timedelta(days=d)
+
+            for r in range(1, readings_per_day + 1):
+                hr = np.random.randint(60, 110)
+                bp_sys = np.random.randint(90, 140)
+                bp_dia = np.random.randint(60, 95)
+                spo2 = np.random.uniform(94, 100)
+                temp = np.random.uniform(36.0, 37.8)
+
+                records.append([
+                    village, patient_id, name, gender, age,
+                    date.date(), r, hr, bp_sys, bp_dia, spo2, temp
+                ])
+
+        df = pd.DataFrame(records, columns=[
+            "Village","Patient_ID","Patient_Name","Gender","Age",
+            "Date","Reading_No","HR","BP_Sys","BP_Dia","SpO2","Temp"
+        ])
+
+        file_path = os.path.join(folder, f"{patient_id}.xlsx")
+        df.to_excel(file_path, index=False)
+
+print("\n🎉 Dataset generation complete!")
+print(f"📍 Output location: {BASE_PATH}")
